@@ -1,9 +1,6 @@
 '''
-The script takes input the txt file which contains the vm name 
-call cluster to get vm uuid and utilize the txt file get get uuid
-
-later utilize the uuid to power cycle the vms
-version : 17/02/2025
+The script can be utilized for changing the vm state from powering off to powering on of the VM.
+version: 17/02/2025
 '''
 
 import json
@@ -15,9 +12,7 @@ pcip = ""
 username = ""
 password = ""
 headers = {'content-type': 'application/json'}
-
-
-get_uuid_url = f"https://{pcip}:9440/api/nutanix/v3/vms/list"
+uuid=""
 
 
 def get_vm_uuid(pcip: str):
@@ -41,21 +36,28 @@ def get_vm_uuid(pcip: str):
         return vm_uuid
     else:
         return {}
-    
 
-def vm_power_cycle(uuid : int, pcip : str):
-    '''
-    powercycle the vm whose ip is provided
-    '''
-    url=f"https://{pcip}:9440/api/nutanix/v3/vms/{uuid}/power_cycle"
-    payload= {}
-    resp = requests.post(url, verify=False, auth=(username,password),headers=headers, json=payload )
-    if resp.status_code== 202:
-        json_resp= resp.json()
-        print('power cycle succeeded')
-        print(json_resp)
-    else:
-        print('vm power cycle failed!!!')
+def fetch_vm_config(uuid,pcip):
+    url = f"https://{pcip}:9440/api/nutanix/v3/vms/{uuid}"
+    resp = requests.get(url, headers=headers, auth=(username, password),verify=False )
+    print(resp.status_code)
+    json_resp = resp.json()
+    # pretty_json = json.dumps(json_resp, indent=4)
+    # print(pretty_json)
+    # for i in json_resp['spec']['resources']:
+    #     print(i)
+    del json_resp['status']
+    json_resp['spec']['resources']['power_state']= 'ON'
+    # print(json_resp['spec']['resources']['power_state'])
+    return json_resp
+
+
+
+def put_vm_config(payload, pcip, uuid):
+    url = f"https://{pcip}:9440/api/nutanix/v3/vms/{uuid}"
+    resp= requests.put(url,headers=headers, json=payload, verify=False, auth=(username, password) )
+    print(resp.status_code)
+
 
 
 #getting the dictionary of [vm_name : uuid]
@@ -70,14 +72,6 @@ with open('vm.txt', 'r') as vm_list:
         vm= vm.lstrip().rstrip()
         print(f"vm going to process is {vm}....")
         if vm in vm_uuid_dict.keys():
-            vm_power_cycle(vm_uuid_dict[vm], pcip)
-            print(f'power cycling vm {vm}')
+            json_payload = fetch_vm_config(vm_uuid_dict[vm], pcip)
+            put_vm_config(json_payload, pcip, vm_uuid_dict[vm])
             time.sleep(20)
-        else:
-            print('vm not found in vm dictionary!!!')
-
-
-
-
-
-    

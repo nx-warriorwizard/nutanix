@@ -7,9 +7,9 @@ import requests
 import urllib3
 
 
-pcip = ""
-username = ""
-password = ""
+pcip = str(input('Enter pcip as 10.10.10.10 ...'))
+username = str(input('Enter the username...'))
+password = str(input('Enter the password...'))
 headers = {'content-type': 'application/json'}
 payload = {
   "kind": "vm",

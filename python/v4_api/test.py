@@ -50,6 +50,8 @@ try:
     # _expand=expand) # if expand parameter is present
     )
     print(api_response)
+    # json_response = json.dumps(api_response)
+    # print(json_response)
     # output= json.dumps(api_response)
     # print(json.loads(output))
 except ApiException as e:
