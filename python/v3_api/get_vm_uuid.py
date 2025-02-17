@@ -7,9 +7,9 @@ import requests
 import urllib3
 
 
-pcip = "10.136.136.5"
-username = "an"
-password = "Nutanix.123"
+pcip = ""
+username = ""
+password = ""
 headers = {'content-type': 'application/json'}
 payload = {
   "kind": "vm",
