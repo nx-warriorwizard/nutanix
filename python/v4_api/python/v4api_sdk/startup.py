@@ -149,7 +149,7 @@ def main():
 
     vmm_instance = ntnx_vmm_py_client.api.ImagesApi(api_client=vmm_client)
 
-    # image_create = vmm_instance.create_image(async_req=False, body=new_image)
+    image_create = vmm_instance.create_image(async_req=False, body=new_image)
 
 
 if __name__ == "__main__":
