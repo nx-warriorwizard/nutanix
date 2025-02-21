@@ -5,24 +5,9 @@
 import requests
 import urllib3
 import json
+import time
 
 headers = {'content-type': 'application/json'}
-
-pc1_cred= {
-    "username": "username",
-    "password": "password",
-    "url": "10.10.10.10"
-}
-
-pc2_cred= {
-    "username": "username",
-    "password": "password",
-    "url": "10.136.136.5"
-}
-
-source_pc = [pc1_cred]
-destination_pc = [pc2_cred, ]
-
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def disable_warnings(func):
@@ -69,21 +54,117 @@ def get_cat_values(pc,category_key):
     else:
         return {}
 
+@disable_warnings
+def get_cat_key(pc, category_name):
+    pc_url = pc['url']
+    username = pc['username']
+    password = pc['password']
+    url = f'https://{pc_url}:9440/api/nutanix/v3/categories/{category_name}'
+    resp = requests.get(url,headers=headers, auth=(username,password), verify=False)
+    if resp.status_code != 200:
+        print('This key does not exist ')
+    json_resp = resp.json()
+    return json_resp
 
+@disable_warnings
+def create_cat_key(pc, category_name):
+    pc_url = pc['url']
+    username = pc['username']
+    password = pc['password']
+    payload = {
+        "description": "string",
+        "capabilities": {
+            "cardinality": 1
+        },
+        "name": f'{category_name}'
+        }
+    url = f'https://{pc_url}:9440/api/nutanix/v3/categories/{category_name}'
+    resp = requests.put(url, verify=False, headers=headers, auth=(username,password),json= payload)
+    if resp.status_code == 200:
+        print(f'Category key "{category_name}" created successfully!')
+    else:
+        print(f'Failed to create category key "{category_name}". Status code: {resp.status_code}')
+    json_resp = resp.json()
+    return json_resp
 
-cat_keys = get_user_defined_category(pc1_cred)
-with open("category.csv","w") as category:
-    for key_entity in cat_keys['entities']:
-        # print(entity['system_defined'])
-        if key_entity['system_defined'] == False:
-            # print(key_entity['name'])
-            #fetch category value for the user defined category key
-            cat_values = get_cat_values(pc1_cred, key_entity['name']) # entity is category key
-            # print(cat_values)
-            for value_entity in cat_values['entities']:
-                print(f" category  : {key_entity['name']} --> {value_entity['value']}")
-                category.write(f"{key_entity['name']},{value_entity['value']}\n")
+@disable_warnings
+def get_cat_val(pc,category_name, value):
+    pc_url = pc['url']
+    username = pc['username']
+    password = pc['password']
+    url = f'https://{pc_url}:9440/api/nutanix/v3/categories/{category_name}/{value}'
+    resp = requests.get(url,headers=headers, auth=(username,password), verify=False)
+    if resp.status_code != 200:
+        print('This val does not exist ')
+    json_resp = resp.json()
+    return json_resp
 
+# print(create_cat_key("test_category"))
+@disable_warnings
+def create_cat_val(pc,category_name,value):
+    pc_url = pc['url']
+    username = pc['username']
+    password = pc['password']
+    payload = {
+        "value": f'{value}'
+    }
+    url = f'https://{pc_url}:9440/api/nutanix/v3/categories/{category_name}/{value}'
+    resp = requests.put(url, verify=False, headers=headers, auth = (username,password), json = payload)
+    if resp.status_code == 200:
+        print(f'Category value "{value}" for key "{category_name}" created successfully!')
+    else:
+        print(f'Failed to create category value "{value}" for key "{category_name}". Status code: {resp.status_code}')
+    json_resp = resp.json()
+    return json_resp
+
+def fetch_category_to_csv(pc):
+    cat_keys = get_user_defined_category(pc)
+    with open("category.csv","w") as category:
+        for key_entity in cat_keys['entities']:
+            # print(entity['system_defined'])
+            if key_entity['system_defined'] == False:
+                # print(key_entity['name'])
+                #fetch category value for the user defined category key
+                cat_values = get_cat_values(pc, key_entity['name']) # entity is category key
+                # print(cat_values)
+                for value_entity in cat_values['entities']:
+                    print(f" category  : {key_entity['name']} --> {value_entity['value']}")
+                    category.write(f"{key_entity['name']},{value_entity['value']}\n")
+    
+def create_category_on_pc(pc):
+    with open("category.csv", "r") as category_file:
+        for line in category_file:
+            category_name, value = line.strip().split(',')
+            create_cat_key(pc, category_name)
+            time.sleep(sleep_time)
+            create_cat_val(pc, category_name, value)
+            time.sleep(sleep_time)
+
+if __name__ == "__main__" :
+    
+    sleep_time = 4 #will wait for sec while creating each category 
+    pc1_cred= {
+    "username": "an",
+    "password": "Nutanix.123",
+    "url": "10.136.136.10"
+    }
+
+    pc2_cred= {
+        "username": "an",
+        "password": "Nutanix.123",
+        "url": "10.136.136.10"
+    }
+
+    source_pc = [pc1_cred]
+    destination_pc = [pc2_cred]
+
+    # For fetching category from source PC
+    # fetch_category_to_csv(source_pc[0])  # Comment this line if you have the CSV already
+
+    # For creating category on different PCs at once
+    # Comment the below lines if you just want the CSV
+    for pc in destination_pc:
+        create_category_on_pc(pc)
 
 
 
