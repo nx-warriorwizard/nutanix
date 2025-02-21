@@ -144,15 +144,15 @@ if __name__ == "__main__" :
     
     sleep_time = 4 #will wait for sec while creating each category 
     pc1_cred= {
-    "username": "an",
-    "password": "Nutanix.123",
-    "url": "10.136.136.10"
+    "username": "test",
+    "password": "test",
+    "url": "test"
     }
 
     pc2_cred= {
-        "username": "an",
-        "password": "Nutanix.123",
-        "url": "10.136.136.10"
+        "username": "test",
+        "password": "test",
+        "url": "test"
     }
 
     source_pc = [pc1_cred]
