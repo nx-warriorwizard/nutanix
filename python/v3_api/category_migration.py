@@ -170,7 +170,7 @@ if __name__ == "__main__":
     destination_pc = [pc2_cred]
 
     # For fetching category from source PC
-    # fetch_category_to_csv(source_pc[0])  # Comment this line if you have the CSV already
+    fetch_category_to_csv(source_pc[0])  # Comment this line if you have the CSV already
 
     # For creating category on different PCs at once
     # Comment the below lines if you just want the CSV
