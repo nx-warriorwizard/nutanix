@@ -166,8 +166,14 @@ if __name__ == "__main__":
         "url": "10.10.10.10"
     }
 
+    pc3_cred = {
+        "username": "username",
+        "password": "password",
+        "url": "10.10.10.10"
+    }
+
     source_pc = [pc1_cred]
-    destination_pc = [pc2_cred]
+    destination_pc = [pc2_cred, pc3_cred, ]
 
     # For fetching category from source PC
     fetch_category_to_csv(source_pc[0])  # Comment this line if you have the CSV already
