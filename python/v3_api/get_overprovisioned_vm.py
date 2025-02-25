@@ -57,10 +57,10 @@ class RESTClient:
         }
 
         try:
-            resp = requests.post(url= self.param.url, headers=headers, verify=False, auth_header= auth_header, json=payload, timeout=10)
+            resp = requests.post(url=self.param.url, headers=headers, verify=False, json=payload, timeout=10)
 
             response.code = resp.status_code
-            response.json= resp.json
+            response.json = resp.json()
             response.message = " request executed successfully."
             response.details = 'N/A'
         except requests.exceptions.ConnectTimeout:
@@ -86,10 +86,12 @@ class RESTClient:
             response.code = -99
             response.message = "An unhandled exception has occurred."
             response.details = _e
+            response.json = resp.json
 
         return response
     
 #-----------------------------------------------------------------------------------------------------------------------------------------
+
 url = f"https://10.136.136.10:9440/api/nutanix/v3/groups"
 username = "an"
 password = input(" enter your password...  \b ")
@@ -126,8 +128,8 @@ rest_client = RESTClient(parameter=parameters)
 resp = rest_client.send_request()
 
 if resp.code == 200:
-    print(json.dumps(resp.json(), indent=4))
+    print(json.dumps((resp.json), indent=4))
 else:
-    print(f"error happened !!!{resp.code}")
+    print(f"error happened !!!{resp.json}")
 
         
