@@ -38,14 +38,15 @@ if resp.status_code == 200:
             for entity in json_resp['entities']:
                 vm_name_uuid[entity['metadata']['uuid']] = entity['status']['name']
 
-# print(vm_name_uuid.items())
+
+print(vm_name_uuid.items())
 customer_requirement = {}
 
-# print(vm_name_uuid.items())
 with open("uuid.txt", "r") as uuid_list:
-    uuid = uuid_list.readline()
-    if uuid in vm_name_uuid.keys():
-        customer_requirement[uuid] = vm_name_uuid[uuid]
+    for line in uuid_list:
+        line = line.strip()
+        if line in vm_name_uuid:
+            customer_requirement[line] = vm_name_uuid[line]
 
 with open("vm_name.txt", "w") as vm_name:
     for i in customer_requirement.values():
