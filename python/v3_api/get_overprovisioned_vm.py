@@ -131,5 +131,3 @@ if resp.code == 200:
     print(json.dumps((resp.json), indent=4))
 else:
     print(f"error happened !!!{resp.json}")
-
-        
