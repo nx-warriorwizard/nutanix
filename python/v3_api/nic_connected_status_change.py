@@ -79,7 +79,7 @@ if __name__ == "__main__":
     username = str(input('Enter the username...'))
     password = str(input('Enter the password...'))
     headers = {'content-type': 'application/json'}
-    vm_name_uuid = fetch_vm_uuid(pcip="10.136.136.10", username='an', password='Nutanix.123', headers=headers )
+    vm_name_uuid = fetch_vm_uuid(pcip="", username='', password='', headers=headers )
     print(vm_name_uuid.items())
 
 
