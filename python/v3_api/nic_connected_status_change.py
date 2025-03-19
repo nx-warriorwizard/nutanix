@@ -74,7 +74,8 @@ def modify_network_status(pcip, username, password, headers, uuid, payload):
     return payload
 
 
-if __name__ == "__main__":
+
+def main():
     pcip = str(input('Enter pcip as 10.10.10.10 ...'))
     username = str(input('Enter the username...'))
     password = str(input('Enter the password...'))
@@ -99,7 +100,8 @@ if __name__ == "__main__":
                 print("="*100)
                 time.sleep(15)
 
-
+if __name__ == "__main__":
+    main()
 
 
 
