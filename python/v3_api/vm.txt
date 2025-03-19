@@ -1,2 +1,2 @@
-Neelay-Linux_VM-1
-fedora_desktop_gs
+AB-Rocky-VM
+AB-Rocky-VM
