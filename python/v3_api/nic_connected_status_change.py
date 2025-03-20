@@ -30,7 +30,7 @@ def fetch_vm_uuid(pcip, username, password, headers):
             if resp.status_code == 200:
                 json_resp = resp.json()
                 for entity in json_resp['entities']:
-                    vm_name_uuid[entity['status']['name']] = entity['metadata']['uuid']
+                    vm_name_uuid[entity['status']['name'].lower()] = entity['metadata']['uuid']
     return vm_name_uuid
 
 def get_vm_payload(pcip, username, password, headers, uuid):
@@ -40,7 +40,7 @@ def get_vm_payload(pcip, username, password, headers, uuid):
 
     if resp.status_code == 200:
         json_resp = resp.json()
-        print(json.dumps(json_resp, indent=4))
+        # print(json.dumps(json_resp, indent=4))
     return json_resp
 
 def update_vm_payload(pcip, username, password, headers, uuid, payload):
@@ -76,19 +76,20 @@ def modify_network_status(pcip, username, password, headers, uuid, payload):
 
 
 def main():
-    pcip = str(input('Enter pcip as 10.10.10.10 ...'))
-    username = str(input('Enter the username...'))
-    password = str(input('Enter the password...'))
+    pcip = str(input('Please enter PC FQDN : '))
+    username = str(input('Enter the username : '))
+    password = str(input('Enter the password : '))
     headers = {'content-type': 'application/json'}
     vm_name_uuid = fetch_vm_uuid(pcip, username, password, headers=headers )
-    print(vm_name_uuid.items())
+    # print(vm_name_uuid.items())
+    # print("Fetched VM")
 
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     vm = os.path.join(script_dir, "vm.txt")
     with open(vm, "r") as file:
         for line in file:
-            vm_name = line.strip()
+            vm_name = line.strip().lower()
             print(f"vm_name: {vm_name}")
             if vm_name not in vm_name_uuid.keys():
                 print(" Can't fetch VM's uuid and Data...")
