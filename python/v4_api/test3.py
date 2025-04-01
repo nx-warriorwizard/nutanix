@@ -321,26 +321,27 @@ def get_vpc_route_table(api_server, username, passwd, headers, vpc_extId, secure
             print("[INFO] Route table Etag is : ", route_table_etag)
             return route_table_extId, route_table_data, route_table_etag
 
-def del_route(api_server, username, passwd, headers, route_table_extId, route_table_etag, route_data, secure):
+def del_route(api_server, username, passwd, headers, route_table_extId, route_table_etag, route_data, subnet_uuid, secure):
     for data in route_data['data']:
-        route_extId = data['extId']
-        url = f"https://{api_server}:9440/api/networking/v4.0/config/route-tables/{route_table_extId}/routes/{route_extId}"
-        headers['NTNX-Request-Id'] = str(uuid.uuid4())
-        headers['IF-Match'] = route_table_etag
-        resp = process_request(url, 'GET', user=username, password=passwd, headers=headers, secure=secure)
-        # print("*"*200)
-        # print(json.loads(resp.content))
-        # print("*"*200)
-        resp2 = process_request(url, 'DELETE', user=username, password=passwd, headers=headers, secure=secure)
-        result = json.loads(resp2.content)
-        task_uuid = result['data']['extId']
-        return task_uuid
+        if data["nexthop"]['nexthopReference'] == subnet_uuid:
+            route_extId = data['extId']
+            url = f"https://{api_server}:9440/api/networking/v4.0/config/route-tables/{route_table_extId}/routes/{route_extId}"
+            headers['NTNX-Request-Id'] = str(uuid.uuid4())
+            headers['IF-Match'] = route_table_etag
+            # resp = process_request(url, 'GET', user=username, password=passwd, headers=headers, secure=secure)
+            # print("*"*200)
+            # print(json.loads(resp.content))
+            # print("*"*200)
+            resp2 = process_request(url, 'DELETE', user=username, password=passwd, headers=headers, secure=secure)
+            result = json.loads(resp2.content)
+            task_uuid = result['data']['extId']
+            return task_uuid
 
 def get_route(api_server, username, passwd, headers, route_table_extId, secure):
     url = f"https://{api_server}:9440/api/networking/v4.0/config/route-tables/{route_table_extId}/routes"
     resp = process_request(url, 'GET', user=username, password=passwd, headers=headers, secure=secure)
     if not(resp.ok):
-        print("ROUTES  RETRIVE FAILED : {resp.status_code} : {resp.content}")
+        print("[INFO] ROUTES  RETRIVE FAILED : {resp.status_code} : {resp.content}")
         exit()
     route_data = json.loads(resp.content)
     total_available_route = route_data['metadata']['totalAvailableResults']
@@ -355,7 +356,6 @@ def update_route(api_server, username, passwd, headers, vpc_extId, route_table_e
     #     return task_uuid
     url = f"https://{api_server}:9440/api/networking/v4.0/config/route-tables/{route_table_extId}/routes"
     payload = {
-        "routeTableReference": "3ed73690-7750-4d81-9c89-60a1337d1db2",
         "routeType": "STATIC",
         "destination": {
             "ipv4": {
@@ -366,9 +366,7 @@ def update_route(api_server, username, passwd, headers, vpc_extId, route_table_e
             }
         },
         "nexthop": {
-            "nexthopName": "ext-test1",
-            "nexthopType": "EXTERNAL_SUBNET",
-            "nexthopReference": "e1a7aad9-ef43-4ee5-b2f8-52c4ac7481fa"
+            "nexthopType": "EXTERNAL_SUBNET"
         }
     }
     payload['nexthop']['nexthopName']= subnet_name
@@ -405,7 +403,7 @@ def prism_flow_update_vpc(api_server, username, passwd, headers, vpc_name, subne
             print("[INFO] No route Table exists")
         else:
             print("[INFO] Deleting route entry from route table.")
-            task_uuid = del_route(api_server, username, passwd, headers, route_table_extId, route_table_etag, route_data, secure)
+            task_uuid = del_route(api_server, username, passwd, headers, route_table_extId, route_table_etag, route_data, old_uuid, secure)
             task_uuid = task_uuid.split('=:')[-1]
             prism_monitor_task_apiv3(api_server, username, passwd, task_uuid, secure=False)
 
@@ -436,6 +434,8 @@ def prism_flow_update_vpc(api_server, username, passwd, headers, vpc_name, subne
 ########################################################################################################
 
 
+
+
 PC_IP = "@@{PC_IP}@@"
 PC_PROVIDER_USERNAME = "@@{prism_central.username}@@"
 PC_PROVIDER_PASSWD = "@@{prism_central.secret}@@"
@@ -445,7 +445,7 @@ SUBNET_UUIDs = @@{SUBNET_UUID}@@  #   [{'ext-test2': '1732650a-090f-46f3-b502-a7
 #
 
 SUBNET_VPC_MAP = {"ext-test2": ["CA VPC", "3C VPC"], "ext-test1": ["CCity VPC","HDC-DC VPC","SDC-DC VPC"] }
-SUBNET_UUIDs = {'ext-test1': 'e1a7aad9-ef43-4ee5-b2f8-52c4ac7481fa','ext-test2': '1732650a-090f-46f3-b502-a76c0ccff6e9'}
+SUBNET_UUIDs = {'ext-test2': '1732650a-090f-46f3-b502-a76c0ccff6e9'}
 
 #encoding the cred
 credentials = f"{PC_PROVIDER_USERNAME}:{PC_PROVIDER_PASSWD}".encode("utf-8")
