@@ -1,0 +1,147 @@
+def test_verify_smtp_config_without_secure_mode(self):
+  """
+  Test to verify SMTP Config Settings without Username/Password.
+  Metadata:
+    Summary: Test to verify SMTP Config Settings without Username/Password.
+    Priority: $P1
+    Components: [$PC]
+    SecondaryComponents: [ $PRISM_PE ]
+    Services: [$AOS_TAR]
+    Requirements: [ENG-75177,ENG-141340]
+    Tags: [$REG_HANDEDOVER]
+    Steps:
+      - Change the SMTP Config Settings, without specifying secure mode.
+      - Send a test email using the changed SMTP Config.
+      - Verify that the email has been sent.
+      - Verify that the SMTP Config Settings has been changed.
+      - Remove the SMTP Config Settings.
+
+  """
+  new_config = {
+    "address": self.test_args["address"],
+    "port": self.test_args["port"],
+    "secure_mode": "NONE",
+    "from_email_address": self.test_args["from_email_address"]
+  }
+  self.rest_cluster.edit_smtp_config(**new_config)
+  updated_config = self.rest_cluster.get_smtp_config()
+  INFO("Updated SMTP Config: %s" % (updated_config))
+
+  INFO("Trying to send test email to: %s" % (self.test_args["recipients"]))
+  url = "https://%s:%s%s" % (self.cluster_ip, self.port, SEND_EMAIL_API)
+
+  test_email_payload = {
+    "recipients": self.test_args["recipients"],
+    "subject": "Test",
+    "content": "This is a test email."
+  }
+  response = self.http.post(url=url, data=json.dumps(test_email_payload),
+                            headers=self.rest_auth, verify=False)
+  json_response = json.loads(response.text)
+  assert json_response["emailSent"], "Failure in sending test email"
+
+  if self.version == PrismRestVersion.V1:
+    INFO("Converting the updated config to Snake Case")
+    updated_config = convert_to_v2(updated_config)
+    INFO("Updated SMTP Config: %s" % (updated_config))
+
+  assert updated_config["address"] == new_config["address"], "Updation of " \
+    "SMTP Config failed"
+  assert updated_config["port"] == new_config["port"], "Updation of SMTP " \
+    "Config failed"
+  assert updated_config["from_email_address"] == new_config\
+    ["from_email_address"], "Updation of SMTP Config failed"
+  #fixme Fix assertion once ENG-176168 gets fixed.
+  assert updated_config["email_status"]["status"] in ["SUCCESS", "UNKNOWN"], \
+    "Updation of SMTP Config failed"
+  INFO("Email successfully sent.")
+
+  INFO("Removing SMTP Config")
+  self.rest_cluster.remove_smtp_config()
+
+  updated_config = self.rest_cluster.get_smtp_config()
+  if self.version == PrismRestVersion.V1:
+    INFO("Converting the updated config to Snake Case")
+    updated_config = convert_to_v2(updated_config)
+    INFO("Updated SMTP Config: %s" % (updated_config))
+
+  assert self.empty_smtp_config == updated_config, "Removal of SMTP Config " \
+                                                   "failed"
+
+def test_verify_smtp_config_with_secure_mode(self):
+  """
+  Test to verify SMTP Config Settings without Username/Password.
+  Metadata:
+    Summary: Test to verify SMTP Config Settings without Username/Password.
+    Priority: $P1
+    Components: [$PRISM]
+    Services: [$AOS_TAR]
+    Requirements: [ENG-75177,ENG-141340]
+    Tags: [$REG_HANDEDOVER]
+    Steps:
+      - Change the SMTP Config Settings, specifying the secure_mode as
+        "STARTTLS".
+      - Send a test email using the changed SMTP Config.
+      - Verify that the email has been sent.
+      - Verify that the SMTP Config Settings has been changed.
+      - Remove the SMTP Config Settings.
+
+  """
+  configs = [
+    {
+      "address": self.test_args["address"],
+      "port": self.test_args["port"],
+      "secure_mode": "STARTTLS",
+      "from_email_address": self.test_args["from_email_address"],
+      "username": self.test_args["username"],
+      "password": self.test_args["password"]
+    }
+  ]
+
+  for new_config in configs:
+    self.rest_cluster.edit_smtp_config(**new_config)
+    updated_config = self.rest_cluster.get_smtp_config()
+    INFO("Updated SMTP Config: %s" % (updated_config))
+
+    INFO("Trying to send test email to: %s" % (self.test_args["recipients"]))
+    url = "https://%s:%s%s" %(self.cluster_ip, self.port, SEND_EMAIL_API)
+
+    test_email_payload = {
+      "recipients": self.test_args["recipients"],
+      "subject": "Test",
+      "content": "This is a test email."
+    }
+    response = self.http.post(url=url, data=json.dumps(test_email_payload),
+                              headers=self.rest_auth, verify=False)
+    json_response = json.loads(response.text)
+    assert json_response["emailSent"], "Failure in sending test email"
+
+    updated_config = self.rest_cluster.get_smtp_config()
+    if self.version == PrismRestVersion.V1:
+      INFO("Converting the updated config to Snake Case")
+      updated_config = convert_to_v2(updated_config)
+      INFO("Updated SMTP Config: %s" % (updated_config))
+
+    #fixme Fix assertion once ENG-176168 gets fixed.
+    assert updated_config["email_status"]["status"] \
+           in ["SUCCESS", "UNKNOWN"], "Updation of SMTP Config failed"
+    INFO("Email successfully sent.")
+
+    del updated_config["email_status"]
+    # Password and hostname are not set in the response
+    server_address = {"hostname" : self.test_args["address"]}
+    new_config["password"] = None
+    new_config["server_address"] = server_address
+    assert updated_config == new_config, "Updation of SMTP Config failed"
+
+    INFO("Removing SMTP Config")
+    self.rest_cluster.remove_smtp_config()
+
+    updated_config = self.rest_cluster.get_smtp_config()
+    if self.version == PrismRestVersion.V1:
+      INFO("Converting the updated config to Snake Case")
+      updated_config = convert_to_v2(updated_config)
+      INFO("Updated SMTP Config: %s" % (updated_config))
+
+    assert self.empty_smtp_config == updated_config, \
+      "Removal of SMTP Config failed"

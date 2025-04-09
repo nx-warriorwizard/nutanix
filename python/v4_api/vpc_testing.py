@@ -1,13 +1,13 @@
-#!/usr/bin/python
-################################################
-########     http_requests.py           ########
-################################################
-# import json #tocomment
-# from time import sleep #tocomment
+import json #tocomment
+from time import sleep #tocomment
+import urllib3 #tocomment
 
 import requests
+import uuid
+import base64
 
 
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  #tocomment
 # For token-based authentication, omit user and password (so that they default to None), and add the following header to
 # the headers list: 'Authorization': 'Bearer <token value>'
 def process_request(url, method, user=None, password=None, cert=None, files=None,headers=None, payload=None, params=None, secure=False, timeout=120, retries=5, exit_on_failure=True):
@@ -24,56 +24,15 @@ def process_request(url, method, user=None, password=None, cert=None, files=None
         try:
 
             if method == 'GET':
-                response = requests.get(
-                    url,
-                    headers=headers,
-                    auth=(user, password) if user else None,
-                    cert=cert if cert else None,
-                    params=params,
-                    verify=secure,
-                    timeout=timeout
-                )
+                response = requests.get(url, headers=headers, auth=(user, password) if user else None, cert=cert if cert else None, params=params, verify=secure, timeout=timeout)
             elif method == 'POST':
-                response = requests.post(
-                    url,
-                    headers=headers,
-                    data=payload,
-                    auth=(user, password) if user else None,
-                    params=params,
-                    verify=secure,
-                    timeout=timeout
-                )
+                response = requests.post(url, headers=headers, data=payload, auth=(user, password) if user else None, params=params, verify=secure, timeout=timeout)
             elif method == 'PUT':
-                response = requests.put(
-                    url,
-                    headers=headers,
-                    data=payload,
-                    auth=(user, password) if user else None,
-                    files=files if files else None,
-                    params=params,
-                    verify=secure,
-                    timeout=timeout
-                )
+                response = requests.put(url, headers=headers, data=payload, auth=(user, password) if user else None, files=files if files else None, params=params, verify=secure, timeout=timeout)
             elif method == 'PATCH':
-                response = requests.patch(
-                    url,
-                    headers=headers,
-                    data=payload,
-                    auth=(user, password) if user else None,
-                    params=params,
-                    verify=secure,
-                    timeout=timeout
-                )
+                response = requests.patch(url, headers=headers, data=payload, auth=(user, password) if user else None, params=params, verify=secure, timeout=timeout)
             elif method == 'DELETE':
-                response = requests.delete(
-                    url,
-                    headers=headers,
-                    data=payload,
-                    auth=(user, password) if user else None,
-                    params=params,
-                    verify=secure,
-                    timeout=timeout
-                )
+                response = requests.delete(url, headers=headers, data=payload, auth=(user, password) if user else None, params=params, verify=secure, timeout=timeout)
 
         except requests.exceptions.RequestException as error_code:
             print('Error: {c}, Message: {m}'.format(c = type(error_code).__name__, m = str(error_code)))
@@ -81,6 +40,7 @@ def process_request(url, method, user=None, password=None, cert=None, files=None
             sleep(sleep_between_retries)
             continue
         
+        sleep(1)
         if response.ok:
             return response
         elif response.status_code == 409:
@@ -100,16 +60,7 @@ def process_request(url, method, user=None, password=None, cert=None, files=None
             else:
                 return response
 
-
-################################################
-############ pc_tasks.py            ############
-################################################
-
-############# Calm imports #################################################################
-# CALM_USES http_requests.py
-############################################################################################
-
-def prism_monitor_task_apiv3(api_server,username,passwd,task_uuid, wait_interval=30,secure=False):
+def prism_monitor_task_apiv3(api_server, username, passwd, task_uuid, wait_interval=30, secure=False):
 
     """Given a Prism Central task uuid, loop until the task is completed
     exits if the task fails
@@ -135,28 +86,25 @@ def prism_monitor_task_apiv3(api_server,username,passwd,task_uuid, wait_interval
     }
     api_server_port = "9440"
     api_server_endpoint = "/api/nutanix/v3/tasks/{0}".format(task_uuid)
-    url = "https://{}:{}{}".format(
-        api_server,
-        api_server_port,
-        api_server_endpoint
-    )
+    url = "https://{}:{}{}".format(api_server, api_server_port, api_server_endpoint)
     method = "GET"
-    print("Making a {} API call to {}".format(method, url))
+    print("[INFO] Making a {} API call to {}".format(method, url))
     
     while True:
-        resp = process_request(url,method,user=username,password=passwd,headers=headers,secure=secure)
+        resp = process_request(url=url, method=method, user=username, password=passwd, headers=headers, secure=secure)
+        sleep(1)
         #print(json.loads(resp.content))
         if resp.ok:
             task_status_details = json.loads(resp.content)
             task_status = resp.json()['status']
             if task_status == "SUCCEEDED":
-                print ("Task has completed successfully")
+                print ("[INFO] Task has completed successfully")
                 return task_status_details
             elif task_status == "FAILED":
-                print ("Task has failed: {}".format(   resp.json()['error_detail'] if 'error_detail' in resp.json() else "No Info" )       )
+                print ("[ERROR] Task has failed: {}".format(   resp.json()['error_detail'] if 'error_detail' in resp.json() else "No Info" )       )
                 exit(1)
             else:
-                print ("Task status is {} and percentage completion is {}. Current step is {}. Waiting for 30 seconds.".format(task_status,resp.json()['percentage_complete'],resp.json()['progress_message']))
+                print ("[INFO] Task status is {} and percentage completion is {}. Current step is {}. Waiting for 30 seconds.".format(task_status,resp.json()['percentage_complete'],resp.json()['progress_message']))
                 sleep(wait_interval)
         else:
             print("Request failed!")
@@ -166,7 +114,7 @@ def prism_monitor_task_apiv3(api_server,username,passwd,task_uuid, wait_interval
             print("raise_for_status: {}".format(resp.raise_for_status()))
             print("elapsed: {}".format(resp.elapsed))
             print("headers: {}".format(resp.headers))
-            print("payload: {}".format(payload))
+            # print("payload: {}".format(payload))
             print(json.dumps(
                 json.loads(resp.content),
                 indent=4
@@ -175,8 +123,7 @@ def prism_monitor_task_apiv3(api_server,username,passwd,task_uuid, wait_interval
 
     return task_status_details
 
-
-def monitor_multiple_tasks_apiv3(api_server,username,passwd,task_uuid_list, nb_retries=120, wait_interval=30, secure=False):
+def monitor_multiple_tasks_apiv3(api_server, username, passwd, task_uuid_list, nb_retries=120, wait_interval=30, secure=False):
 
     """Given a Prism Central list of tasks uuids, loop until all tasks finish or some task fails
     exits if the one of the tasks fails
@@ -205,13 +152,9 @@ def monitor_multiple_tasks_apiv3(api_server,username,passwd,task_uuid_list, nb_r
             }
             api_server_port = "9440"
             api_server_endpoint = "/api/nutanix/v3/tasks/{0}".format(task_uuid)
-            url = "https://{}:{}{}".format(
-                api_server,
-                api_server_port,
-                api_server_endpoint
-            )
+            url = "https://{}:{}{}".format(api_server, api_server_port, api_server_endpoint)
             method = "GET"
-            resp = process_request(url=url,method=method,user=username,password=passwd,headers=headers,secure=secure)
+            resp = process_request(url=url, method=method, user=username, password=passwd, headers=headers, secure=secure)
             if resp.ok:
                 task_status = resp.json()['status']
             else:
@@ -247,276 +190,327 @@ def monitor_multiple_tasks_apiv3(api_server,username,passwd,task_uuid_list, nb_r
     print("ERROR - Tasks monitoring timed out")
     exit(1)
 
-
-
-
-################################################
-############ pc_vpcs.py          ############
-################################################
-
-############# Calm imports #################################################################
-# CALM_USES http_requests.py
-############################################################################################
-
-def prism_get_vpc(api_server, username, passwd, vpc_name, headers=None, secure=False):
-
-    """Get a VPC object from its name.
-
-
-    Args:
-        api_server: The IP or FQDN of Prism.
-        username: The Prism user name.
-        passwd: The Prism user name password.
-        vpc_name: Name of the vpc.
-        secure: boolean to verify or not the api server's certificate (True/False) 
-        print_f: True/False. if False the function does not print traces to the stdout, as long as there are no errors
-        
-    Returns:
-        vpc_object which is the payload for the desired vpc object (can be null if vpc name was not found)
+def get_vpc(api_server, username, passwd, headers, vpc_name, secure):
     """
-    headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    }
-    
-    method = "GET"
-    url = 'https://{}:9440/api/networking/v4.0.b1/config/vpcs'.format(api_server)
-    resp = process_request(url=url,method=method, user=username, password=passwd, headers=headers, payload=None, secure=secure)
-    if resp.ok:
+    Fetches the external ID, payload response, and ETag value of a specified VPC.
+
+        api_server (str): The IP or FQDN of the Prism server.
+        username (str): The Prism user name.
+        passwd (str): The password for the Prism user.
+        headers (dict): The headers for the API request.
+        vpc_name (str): The name of the VPC to retrieve.
+        secure (bool): Whether to verify the API server's SSL certificate (True/False).
+
+        tuple: A tuple containing:
+            - vpc_extId (str): The external ID of the VPC.
+            - vpc_data (dict): The payload response of the matching VPC.
+            - vpc_etag (str): The ETag value of the VPC.
+
+    Raises:
+        SystemExit: If the API request fails or the VPC data cannot be fetched.
+    """
+    url = f"https://{api_server}:9440/api/networking/v4.0/config/vpcs"
+    resp = process_request(url=url, method="GET", user=username, password=passwd, headers=headers, secure=secure)
+    if resp.ok :
         result = json.loads(resp.content)
-        #print(result)
-        for i in result['data']:
-            if i['name'] == vpc_name:
-                url = 'https://{}:9440/api/networking/v4.0.b1/config/vpcs/{}'.format(api_server,i['extId'])
-                resp2 = process_request(url,'GET', user=username, password=passwd, headers=headers, payload=None, secure=secure)
-                if not(resp.ok):
-                    print('ERROR - VPC get failed, status code: {}, msg: {}'.format(resp2.status_code, resp2.content))
-                    exit(1)
+        for vpc_data in result['data']:
+            if vpc_data["name"] == vpc_name:
+                vpc_extId = vpc_data['extId']
+                url = f"https://{api_server}:9440/api/networking/v4.0/config/vpcs/{vpc_extId}"
+                resp2= process_request(url=url, method="GET", user=username, password=passwd, headers=headers, secure=secure)
+                # print("type of resp2 : ", resp2.content)
+
                 header = dict(resp2.headers)
                 vpc_etag = header.get("Etag", None)
-                print("VPC etag is :",vpc_etag)
-                return i['extId'], i, vpc_etag
-        print("VPC not found")
-        exit(1)
+                if not(resp.ok):
+                    print(f"[INFO] VPC Fetched Data Status: {resp2.status_code} : {resp2.content}")
+                    exit()
+                return vpc_extId, vpc_data, vpc_etag
     else:
-        print('ERROR - VPC get failed, status code: {}, msg: {}'.format(resp.status_code, resp.content))
-        exit(1)
+        print(f"[INFO] GET_VPC_resp : {resp.status_code}")
+        exit()
 
-
-########################################################################
-############       w2_8_flow_virtual_networking.py          ############
-########################################################################
-
-############# Calm imports #################################################################
-# CALM_USES pc_tasks.py, pc_vpcs.py
-############################################################################################
-
-def prism_get_vpc_routes(api_server, username, passwd, headers, vpc_uuid, secure=False):
-
-    """gets routing table from a vpc.
-
-    Args:
-        api_server: The IP or FQDN of Prism.
-        username: The Prism user name.
-        passwd: The Prism user name password.
-        vpc_uuid: uuid of the vpc to be updated.
-        secure: boolean to verify or not the api server's certificate (True/False) 
-        
-    Returns:
-        vpc_routes: vpc routing table object where spec.resources contains: 
-          static_routes_list and default_route_nexthop.
+def update_vpc(api_server, username, passwd, headers, vpc_data, vpc_etag, vpc_extId, old_uuid, subnet_uuid, secure ):
     """
-
-    url = 'https://{}:9440/api/networking/v4.0.b1/config/route-tables'.format(api_server)
-    resp = process_request(url,'GET', user=username, password=passwd, headers=headers, payload=None, secure=secure)
-    if resp.ok:
-        result = json.loads(resp.content)     
-        for i in result['data']:
-            if i['vpcReference'] == vpc_uuid :
-                url = 'https://{}:9440/api/networking/v4.0.b1/config/route-tables/{}'.format(api_server, i['extId'])
-                resp2 = process_request(url,'GET', user=username, password=passwd, headers=headers, payload=None, secure=secure)
-                if not(resp2.ok):
-                    print('ERROR - Route-table GET failed, status code: {}, msg: {}'.format(resp2.status_code, resp2.content))
-                    exit(1)
-                header = dict(resp2.headers)
-                route_table_etag = header.get("Etag", None)
-                print("Route table Etag is :", route_table_etag)
-                return i, route_table_etag
-    else:
-        print('ERROR - Route-table GET failed, status code: {}, msg: {}'.format(resp.status_code, resp.content))
-        exit(1)
-
-#TODO: completed: needs testing
-def prism_flow_delete_routing_table(api_server, username, passwd, headers, vpc_route_table, route_table_etag, secure=False):
-
-    """deletes all static and default routes from a VPC.
-
+    Updates the VPC with new subnet details and returns the task UUID.
     Args:
-        api_server: The IP or FQDN of Prism.
-        username: The Prism user name.
-        passwd: The Prism user name password.
-        vpc_uuid: uuid of the vpc to be updated
-        secure: boolean to verify or not the api server's certificate (True/False) 
-        
+        api_server (str): The API server address.
+        username (str): The username for authentication.
+        passwd (str): The password for authentication.
+        headers (dict): The HTTP headers for the request.
+        vpc_data (dict): The VPC configuration data to be updated.
+        vpc_etag (str): The ETag value for the VPC resource.
+        vpc_extId (str): The external ID of the VPC.
+        old_uuid (str): The UUID of the old subnet.
+        subnet_uuid (str): The UUID of the new subnet.
+        secure (bool): Whether to use a secure connection (HTTPS).
     Returns:
-        the uuid of the vpc update task
+        str: The UUID of the task created for the VPC update.
     """
-
-    headers['NTNX-Request-Id'] = str(uuid.uuid4())
-    headers['IF-Match'] = route_table_etag
-    vpc_route_table['staticRoutes'] = []
     
-    url = 'https://{}:9440/api/networking/v4.0.b1/config/route-tables/{}'.format(api_server, vpc_route_table['extId'])
-    resp = process_request(url, 'PUT', user=username, password=passwd, headers=headers, payload=vpc_route_table, secure=secure)
-    if resp.ok:
-        result = json.loads(resp.content)
-        task_uuid = result['data']['extId']
-        print('INFO - Route Table deleted with status code: {}'.format(resp.status_code))
-    else:
-        print('ERROR - Route Table delete failed, status code: {}, msg: {}'.format(resp.status_code, resp.content))
-        exit(1)
-    return task_uuid
+    print(f"[INFO] Updating Subnet from {old_uuid} : {subnet_uuid}...")
+    vpc_data['externalSubnets'][0]['subnetReference'] = subnet_uuid
+    vpc_data['externalSubnets'][0]['externalIps'] = []
+    vpc_data['externalSubnets'][0]['activeGatewayNode'] = {}
 
-def prism_flow_update_routing_table(api_server, username, passwd, headers, vpc_route_table, subnet_uuid, route_table_etag, secure=False):
-
-    """updates all static and default routes in a VPC.
-
-    Args:
-        api_server: The IP or FQDN of Prism.
-        username: The Prism user name.
-        passwd: The Prism user name password.
-        vpc_uuid: uuid of the vpc to be updated
-        secure: boolean to verify or not the api server's certificate (True/False) 
-        
-    Returns:
-        the uuid of the vpc update task
-    """
-
-    headers['NTNX-Request-Id'] = str(uuid.uuid4())
-    headers['IF-Match'] = route_table_etag
-
-    vpc_route_table["staticRoutes"]= [
-            {
-                "destination": {
-                    "ipv4": {
-                        "ip": {
-                            "value": "0.0.0.0",
-                            "prefixLength": 32
-                        },
-                        "prefixLength": 0
-                    }
-                },
-                "nexthopType": "EXTERNAL_SUBNET",
-                "nexthopReference": subnet_uuid
-            }
-        ]
-    
-    url = 'https://{}:9440/api/networking/v4.0.b1/config/route-tables/{}'.format(api_server, vpc_route_table['extId'])
-    resp = process_request(url, 'PUT', user=username, password=passwd, headers=headers, payload=vpc_route_table, secure=secure)
-    if resp.ok:
-        result = json.loads(resp.content)
-        task_uuid = result['data']['extId']
-        print('INFO - Route Table Updated with status code: {}'.format(resp.status_code))
-    else:
-        print('ERROR - Route Table Update failed, status code: {}, msg: {}'.format(resp.status_code, resp.content))
-        exit(1)
-    return task_uuid
-
-
-def prism_flow_update_vpc(api_server, username, passwd, headers, vpc_name, subnet_uuid, subnet_name, secure=False):
-
-    """Updates a VPC to update external connectivity.  Note that in order to update external connectivity, the VPC 
-         routing table must not contain any reference to that external network.
-
-    Args:
-        api_server: The IP or FQDN of Prism.
-        username: The Prism user name.
-        passwd: The Prism user name password.
-        vpc_name: name of the vpc to be created
-        secure: boolean to verify or not the api server's certificate (True/False) 
-        
-    Returns:
-        the uuid of the update task
-    """
-
-    #get vpc object
-    vpc_uuid, vpc_obj, vpc_etag = prism_get_vpc(api_server=api_server, username=username, passwd=passwd, headers=headers, vpc_name=vpc_name, secure=secure)
-    vpc_route_table, route_table_etag = prism_get_vpc_routes(api_server, username, passwd, headers, vpc_uuid, secure=secure)
-    old_uuid = ""
-    if 'externalSubnets' in vpc_obj:
-        old_uuid = vpc_obj['externalSubnets'][0]['subnetReference'] 
-    print("Older UUID:", old_uuid)
-    
-    print("Comparing the older subnet UUID with the runbook variable list")
-    if old_uuid == subnet_uuid:
-        print("Same Subnet already configured:{} {}. Skipping!!!".format(subnet_uuid, subnet_name))
-        return
-    else:
-        print("Subnet to be updated from {} to {}".format(old_uuid, subnet_uuid))
-    print("Updating VPC payload")
-    vpc_obj['externalSubnets'][0]['subnetReference'] = subnet_uuid
-    vpc_obj['externalSubnets'][0]['externalIps'] = []
-    #TODO
-    # vpc_obj['spec']['resources']['external_subnet_list'][0]['active_gateway_count'] = 1
-    vpc_obj['externalSubnets'][0]['activeGatewayNode'] = {}
-    vpc_obj['is_pc_dvs'] = True
-
-    task_uuid = prism_flow_delete_routing_table(api_server=api_server, username=username, passwd=passwd, headers=headers, vpc_route_table=vpc_route_table, route_table_etag = route_table_etag)
-    task_uuid = task_uuid.split('=:')[-1]
-    prism_monitor_task_apiv3(api_server=api_server, username=username, passwd=passwd, task_uuid=task_uuid, secure=False)
-    
-    print("Making an API call to update VPC payload")
-
+    print('[INFO] Updating VPC...')
     headers['NTNX-Request-Id'] = str(uuid.uuid4())
     headers['IF-Match'] = vpc_etag
-    url = 'https://{}:9440/api/networking/v4.0.b1/config/vpcs/{}'.format(api_server, vpc_uuid)
-    resp = process_request(url, 'PUT', user=username, password=passwd, headers=headers, payload=vpc_obj , secure=secure)
-    if resp.ok:
-        result = json.loads(resp.content)
-        task_uuid = result['data']['extId']
+    url = f'https://{api_server}:9440/api/networking/v4.0/config/vpcs/{vpc_extId}'
+    resp = process_request(url=url, method="PUT", user=username, password=passwd, headers=headers, payload=vpc_data, secure=secure)
+    result = json.loads(resp.content)
+    task_uuid = result['data']['extId']
+    return task_uuid
+
+def get_vpc_route_table(api_server, username, passwd, headers, vpc_extId, secure):
+    """
+    Fetches the route table details for a specific VPC.
+    Args:
+        api_server (str): The API server address.
+        username (str): The username for authentication.
+        passwd (str): The password for authentication.
+        headers (dict): The headers to include in the API request.
+        vpc_extId (str): The external ID of the VPC.
+        secure (bool): Whether to use secure (HTTPS) communication.
+    Returns:
+        tuple: A tuple containing:
+            - route_table_extId (str): The external ID of the route table.
+            - route_table_data (dict): The route table data.
+            - route_table_etag (str or None): The ETag of the route table, if available.
+    Raises:
+        SystemExit: If the API request fails or returns an error response.
+    Notes:
+        - The function makes two API calls: one to fetch the list of route tables and another to fetch details of the specific route table.
+        - If the route table's ETag is not found in the response headers, `None` is returned for the ETag.
+    """
+
+    url = f"https://{api_server}:9440/api/networking/v4.0/config/route-tables"
+    resp = process_request(url=url, method="GET", user=username, password=passwd, headers=headers, secure=secure)
+    if not( resp.ok ):
+        print(f"[INFO] GET VPC ROUTE LIST : {resp.status_code} : {resp.content}")
+        exit()
+    result = json.loads(resp.content)
+    for route_table_data in result["data"]:
+        if route_table_data["vpcReference"] == vpc_extId:
+            route_table_extId = route_table_data["extId"]
+            url = f"https://{api_server}:9440/api/networking/v4.0/config/route-tables/{route_table_extId}"
+            resp2 = process_request(url=url, method="GET", user=username, password=passwd, headers=headers, secure=secure)
+            resp2_res = json.loads(resp2.content)
+            if not (resp2.ok):
+                print("[INFO] GET VPC ROUTE : {resp2.status_code} : {resp2.content}")
+            header = dict(resp2.headers)
+            route_table_etag = header.get("Etag", None)
+            return route_table_extId, route_table_data, route_table_etag
+
+def del_route(api_server, username, passwd, headers, route_table_extId, route_table_etag, route_data, subnet_uuid, secure):
+    """
+    Deletes a specific route from a route table in the VPC.
+    Args:
+        api_server (str): The API server address.
+        username (str): The username for authentication.
+        passwd (str): The password for authentication.
+        headers (dict): HTTP headers for the request.
+        route_table_extId (str): The external ID of the route table.
+        route_table_etag (str): The ETag of the route table for concurrency control.
+        route_data (dict): The route data containing route details.
+        subnet_uuid (str): The UUID of the subnet to match the route's next hop.
+        secure (bool): Whether to use a secure connection (HTTPS).
+    Returns:
+        str: The UUID of the task created for deleting the route.
+    Raises:
+        KeyError: If the expected keys are missing in the response or route data.
+        ValueError: If the response content cannot be parsed as JSON.
+    """
+
+    for data in route_data['data']:
+        if data["nexthop"]['nexthopReference'] == subnet_uuid:
+            route_extId = data['extId']
+            url = f"https://{api_server}:9440/api/networking/v4.0/config/route-tables/{route_table_extId}/routes/{route_extId}"
+            headers['NTNX-Request-Id'] = str(uuid.uuid4())
+            headers['IF-Match'] = route_table_etag
+            # resp = process_request(url, 'GET', user=username, password=passwd, headers=headers, secure=secure)
+            # print("*"*200)
+            # print(json.loads(resp.content))
+            # print("*"*200)
+            resp2 = process_request(url=url, method="DELETE", user=username, password=passwd, headers=headers, secure=secure)
+            result = json.loads(resp2.content)
+            task_uuid = result['data']['extId']
+            return task_uuid
+
+def get_route(api_server, username, passwd, headers, route_table_extId, secure):
+    # Fetch the total number of available routes and route data
+    url = f"https://{api_server}:9440/api/networking/v4.0/config/route-tables/{route_table_extId}/routes"
+    resp = process_request(url=url, method="GET", user=username, password=passwd, headers=headers, secure=secure)
+    if not(resp.ok):
+        print("[INFO] ROUTES  RETRIVE FAILED : {resp.status_code} : {resp.content}")
+        exit()
+    route_data = json.loads(resp.content)
+    total_available_route = route_data['metadata']['totalAvailableResults']
+    return total_available_route, route_data
+    
+def add_route(api_server, username, passwd, headers, vpc_extId, route_table_extId, subnet_uuid, subnet_name, secure):
+    """
+    Adds a static route to a specified route table in the VPC.
+    Args:
+        api_server (str): The API server address.
+        username (str): The username for authentication.
+        passwd (str): The password for authentication.
+        headers (dict): The HTTP headers for the request.
+        vpc_extId (str): The external ID of the VPC (currently unused in the payload).
+        route_table_extId (str): The external ID of the route table to update.
+        subnet_uuid (str): The UUID of the external subnet to use as the next hop.
+        subnet_name (str): The name of the external subnet to use as the next hop.
+        secure (bool): Whether to use a secure connection (HTTPS).
+    Returns:
+        str: The UUID of the task created for the route addition.
+    Raises:
+        Exception: If the API request fails or the response is invalid.
+    """
+
+    url = f"https://{api_server}:9440/api/networking/v4.0/config/route-tables/{route_table_extId}/routes"
+    payload = {
+        "routeType": "STATIC",
+        "destination": {
+            "ipv4": {
+                "ip": {
+                    "value": "0.0.0.0"
+                },
+                "prefixLength": 0
+            }
+        },
+        "nexthop": {
+            "nexthopType": "EXTERNAL_SUBNET"
+        }
+    }
+    payload['nexthop']['nexthopName']= subnet_name
+    payload['nexthop']['nexthopReference']= subnet_uuid
+    payload['routeTableReference']= route_table_extId
+    # payload['vpcReference']= vpc_extId
+    headers['NTNX-Request-Id']= str(uuid.uuid4())
+    resp = process_request(url=url, method="POST", user=username, password=passwd, headers=headers, payload=payload, secure=secure)
+    print(f"[INFO] Update route {resp.status_code} : {resp.content}")
+    result = json.loads(resp.content)
+    task_uuid = result['data']['extId']
+    # task_uuid = task_uuid.split('=:')[-1]
+    # prism_monitor_task_apiv3(api_server, username, passwd, task_uuid, secure=False)
+    return task_uuid
+
+def prism_flow(api_server, username, passwd, headers, vpc_name, subnet_uuid, subnet_name, secure):
+    """
+    Manages the flow VPC including retrieving VPC details, managing routes, and updating VPC configurations.
+    Args:
+        api_server (str): The API server address.
+        username (str): The username for authentication.
+        passwd (str): The password for authentication.
+        headers (dict): HTTP headers for API requests.
+        vpc_name (str): The name of the VPC to manage.
+        subnet_uuid (str): The UUID of the subnet to associate with the VPC.
+        subnet_name (str): The name of the subnet to associate with the VPC.
+        secure (bool, optional): Whether to use secure (HTTPS) communication. Defaults to False.
+    Returns:
+        None
+    Raises:
+        Exception: If any API call fails or an unexpected error occurs.
+    Note:
+        - This function performs multiple API calls to manage VPC and route configurations.
+        - It ensures that the specified subnet is associated with the VPC and updates routes accordingly.
+        - If the subnet is already associated, it skips redundant operations.
+    """
+    vpc_extId, vpc_data, vpc_etag = get_vpc(api_server=api_server, username=username, passwd=passwd, headers=headers, vpc_name=vpc_name, secure=secure)
+    sleep(1)
+    route_table_extId, route_table_data, route_table_etag = get_vpc_route_table(api_server=api_server, username=username, passwd=passwd, headers=headers, vpc_extId=vpc_extId, secure=secure)
+    sleep(1)
+    total_available_route, route_data = get_route(api_server=api_server, username=username, passwd=passwd, headers=headers, route_table_extId=route_table_extId, secure=secure)
+
+    old_uuid = ""
+    if 'externalSubnets' in vpc_data:
+            old_uuid = vpc_data['externalSubnets'][0]['subnetReference']
+    route_uuid = [data["nexthop"]['nexthopReference'] for data in route_data['data']] if total_available_route != 0 else []
+    
+    if total_available_route == 0 or old_uuid not in route_uuid:
+        task_uuid = add_route(api_server=api_server, username=username, passwd=passwd, headers=headers, vpc_extId=vpc_extId, route_table_extId=route_table_extId, subnet_uuid=subnet_uuid, subnet_name=subnet_name, secure=secure)
+        print("[INFO] task_uuid :", task_uuid)
         task_uuid = task_uuid.split('=:')[-1]
-        prism_monitor_task_apiv3(api_server, username, passwd, task_uuid, secure=False)
-        # vpc_uuid = result['metadata']['uuid']
-        print('INFO - VPC Updated with status code: {}'.format(resp.status_code))
-        print('INFO - VPC uuid: {}'.format(vpc_uuid))
+        prism_monitor_task_apiv3(api_server=api_server, username=username, passwd=passwd, task_uuid=task_uuid, secure=False)
+
+    if subnet_uuid == old_uuid:
+        print("[INFO] Same subnet already exists!!!")
     else:
-        print('ERROR - VPC updation failed, status code: {}, msg: {}'.format(resp.status_code, resp.content))
-        exit(1)
+        total_available_route, route_data = get_route(api_server=api_server, username=username, passwd=passwd, headers=headers, route_table_extId=route_table_extId, secure=secure)
+        if total_available_route == 0:
+            print("[INFO] No route Table exists")
+        else:
+            print("[INFO] Deleting route entry from route table.")
+            task_uuid = del_route(api_server=api_server, username=username, passwd=passwd, headers=headers, route_table_extId=route_table_extId, route_table_etag=route_table_etag, route_data=route_data, subnet_uuid=old_uuid, secure=secure)
+            task_uuid = task_uuid.split('=:')[-1]
+            prism_monitor_task_apiv3(api_server=api_server, username=username, passwd=passwd, task_uuid=task_uuid, secure=False)
 
-    vpc_route_table, route_table_etag = prism_get_vpc_routes(api_server, username, passwd, headers, vpc_uuid, secure=secure)
-    task_uuid = prism_flow_update_routing_table(api_server, username, passwd, headers, vpc_route_table=vpc_route_table, subnet_uuid=subnet_uuid, route_table_etag = route_table_etag)
-    task_uuid = task_uuid.split('=:')[-1]
-    prism_monitor_task_apiv3(api_server, username, passwd, task_uuid, secure=False)
+        # update vpc with new subnet uuid
+        task_uuid = update_vpc(api_server=api_server, username=username, passwd=passwd, headers=headers, vpc_data=vpc_data, vpc_etag=vpc_etag, vpc_extId=vpc_extId, old_uuid=old_uuid, subnet_uuid=subnet_uuid, secure=secure)
+        task_uuid = task_uuid.split('=:')[-1]
+        prism_monitor_task_apiv3(api_server=api_server, username=username, passwd=passwd, task_uuid=task_uuid, secure=False)
+        
+        #adding static route
+        print("[INFO] Route adding in progress ")
+        task_uuid = add_route(api_server=api_server, username=username, passwd=passwd, headers=headers, vpc_extId=vpc_extId, route_table_extId=route_table_extId, subnet_uuid=subnet_uuid, subnet_name=subnet_name, secure=secure)
+        print("[INFO] task_uuid :", task_uuid)
+        task_uuid = task_uuid.split('=:')[-1]
+        prism_monitor_task_apiv3(api_server=api_server, username=username, passwd=passwd, task_uuid=task_uuid, secure=False)
 
 
 
-############# Calm imports #################################################################
-# CALM_USES w2_8_flow_virtual_networking.py
-############################################################################################
+########################################################################################################
+########################################################################################################
+########################################################################################################
+
+# PC_IP = "@@{PC_IP}@@"
+# PC_PROVIDER_USERNAME = "@@{prism_central.username}@@"
+# PC_PROVIDER_PASSWD = "@@{prism_central.secret}@@"
+# print(PC_PROVIDER_USERNAME)
+# SUBNET_VPC_MAP = @@{SUBNET_VPC_MAP}@@   ### {      "ext-test2": ["3C VPC","CA VPC"],     "ext-test1": ["CCity VPC","HDC-DC VPC","SDC-DC VPC"]   }
+# SUBNET_UUIDs = @@{SUBNET_UUID}@@  #   [{'ext-test2': '1732650a-090f-46f3-b502-a76c0ccff6e9'}, {'ext-test1': 'e1a7aad9-ef43-4ee5-b2f8-52c4ac7481fa'}]
+# #
+
+PC_IP = ""
+PC_PROVIDER_USERNAME = ""
+PC_PROVIDER_PASSWD = ""
+SUBNET_VPC_MAP = {"ext-test2": ["CA VPC", "3C VPC"], "ext-test1": ["CCity VPC","HDC-DC VPC","SDC-DC VPC"] }
+SUBNET_UUIDs = {'ext-test1': 'e1a7aad9-ef43-4ee5-b2f8-52c4ac7481fa','ext-test2': '1732650a-090f-46f3-b502-a76c0ccff6e9'}
+
+#encoding the cred
+credentials = f"{PC_PROVIDER_USERNAME}:{PC_PROVIDER_PASSWD}".encode("utf-8")
+encoded_credentials = base64.b64encode(credentials).decode("utf-8")
+
+print("*"*200)
+print(encoded_credentials)
+print("*"*200)
 
 headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-}
+        'Content-Type': 'application/json', 
+        'Accept': 'application/json', 
+        'Authorization': f'Basic {encoded_credentials}'
+        }
 
-PC_IP = "@@{PC_IP}@@"
-PC_PROVIDER_USERNAME = "@@{prism_central.username}@@"
-PC_PROVIDER_PASSWD = "@@{prism_central.secret}@@"
-print(PC_PROVIDER_USERNAME)
-SUBNET_VPC_MAP = @@{SUBNET_VPC_MAP}@@   ### {      "ext-test2": ["3C VPC","CA VPC"],     "ext-test1": ["CCity VPC","HDC-DC VPC","SDC-DC VPC"]   }
-SUBNET_UUIDs = @@{SUBNET_UUID}@@  #   [{'ext-test2': '1732650a-090f-46f3-b502-a76c0ccff6e9'}, {'ext-test1': 'e1a7aad9-ef43-4ee5-b2f8-52c4ac7481fa'}]
-#
 
 if len(SUBNET_UUIDs) == 1:
-  for SUBNET_NAME in SUBNET_UUIDs:
-    SUBNET_UUID = SUBNET_UUIDs[SUBNET_NAME]
-    VPC_LIST = ','.join([ ','.join(SUBNET_VPC_MAP[i]) for i in SUBNET_VPC_MAP ]).split(',')
-    for VPC_NAME in VPC_LIST:
-      prism_flow_update_vpc(PC_IP,PC_PROVIDER_USERNAME,PC_PROVIDER_PASSWD,headers,VPC_NAME,SUBNET_UUID,SUBNET_NAME)
+    for SUBNET_NAME in SUBNET_UUIDs:
+        SUBNET_UUID = SUBNET_UUIDs[SUBNET_NAME]
+        VPC_LIST = ','.join([','.join(SUBNET_VPC_MAP[i]) for i in SUBNET_VPC_MAP]).split(',')
+        print(VPC_LIST)
+        for VPC_NAME in VPC_LIST:
+            print("-" * 180)
+            print(f"[INFO] VPC IS : {VPC_NAME}")
+            prism_flow(api_server=PC_IP, username=PC_PROVIDER_USERNAME, passwd=PC_PROVIDER_PASSWD, headers=headers, vpc_name=VPC_NAME, subnet_uuid=SUBNET_UUID, subnet_name=SUBNET_NAME, secure=False)
+            sleep(1)
 else:
-  print("Restoring to the original state : ", SUBNET_VPC_MAP)
-  for SUBNET_NAME in SUBNET_VPC_MAP: 
-    SUBNET_UUID = SUBNET_UUIDs[SUBNET_NAME]
-    VPC_LIST = SUBNET_VPC_MAP[SUBNET_NAME]
-    for VPC_NAME in VPC_LIST:
-      prism_flow_update_vpc(PC_IP,PC_PROVIDER_USERNAME,PC_PROVIDER_PASSWD,headers,VPC_NAME,SUBNET_UUID,SUBNET_NAME)
+    print("[INFO] Restoring to the original state : ", SUBNET_VPC_MAP)
+    for SUBNET_NAME in SUBNET_VPC_MAP:
+        SUBNET_UUID = SUBNET_UUIDs[SUBNET_NAME]
+        VPC_LIST = SUBNET_VPC_MAP[SUBNET_NAME]
+        print(VPC_LIST)
+        for VPC_NAME in VPC_LIST:
+            print("-" * 25)
+            print(f"[INFO] VPC IS : {VPC_NAME}")
+            prism_flow(api_server=PC_IP, username=PC_PROVIDER_USERNAME, passwd=PC_PROVIDER_PASSWD, headers=headers, vpc_name=VPC_NAME, subnet_uuid=SUBNET_UUID, subnet_name=SUBNET_NAME, secure=False)
+            sleep(1)
+
